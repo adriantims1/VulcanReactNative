@@ -1,73 +1,59 @@
 import React, { useContext } from "react";
 import { StyleSheet } from "react-native";
-import { HStack, Box, Heading, Text } from "native-base";
+import { VStack, Box, Heading, Text } from "native-base";
 
-//Context
-import InitDataContext from "../context/InitDataContext";
+//Redux
+import { connect } from "react-redux";
 
-const Balance_Card = () => {
-  const { state } = useContext(InitDataContext);
+function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+const Balance_Card = ({ balanceType, profileData }) => {
   const numberWithCommas = (x) => {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
   return (
-    <HStack justifyContent="space-evenly" flex={1} mb={5}>
-      <Box
-        flex={1}
-        bgColor="primary.800"
-        borderRadius={30}
-        style={styles.shadow}
-        border={5}
-        borderColor="white"
-      >
-        <Box flex={1} justifyContent="center" p={3}>
-          <Text color="white">Real Balance</Text>
-          <Box flexDirection="row" mt={3}>
-            <Heading style={styles.balanceCardContent} color="white">
-              {state.iso}
-            </Heading>
-            <Heading ml={5} style={styles.balanceCardContent} color="white">
-              {state.balance.real % 100 === 0
-                ? numberWithCommas(state.balance.real / 100).concat(".00")
-                : numberWithCommas(state.balance.real / 100)}
-            </Heading>
-          </Box>
-        </Box>
+    <>
+      <Box>
+        <Text style={styles.heading}>
+          {`${capitalizeFirstLetter(balanceType)}`} Balance{" "}
+        </Text>
+        <Heading size="xl" color="white">
+          {` ${profileData.unit} ${
+            profileData.balance[balanceType] % 100 === 0
+              ? numberWithCommas(profileData.balance[balanceType] / 100).concat(
+                  ".00"
+                )
+              : numberWithCommas(profileData.balance[balanceType] / 100)
+          }`}
+        </Heading>
       </Box>
-      <Box flex={0.1}></Box>
-      <Box
-        flex={1}
-        bgColor="white"
-        borderRadius={30}
-        style={styles.shadow}
-        border={5}
-        borderColor="primary.800"
-      >
-        <Box flex={1} justifyContent="center" p={3}>
-          <Text color="primary.800">Demo Balance</Text>
-          <Box flexDirection="row" mt={3}>
-            <Heading style={styles.balanceCardContent} color="primary.800">
-              {state.iso}
-            </Heading>
-            <Heading
-              ml={5}
-              style={styles.balanceCardContent}
-              color="primary.800"
-            >
-              {state.balance.demo % 100 === 0
-                ? numberWithCommas(state.balance.demo / 100).concat(".00")
-                : numberWithCommas(state.balance.demo / 100)}
-            </Heading>
-          </Box>
-        </Box>
+      <Box>
+        <Text style={styles.heading}>
+          {`${capitalizeFirstLetter(balanceType)}`} Profit{" "}
+        </Text>
+        <Heading size="xl" color="white">
+          {` ${profileData.unit} ${
+            profileData.todayProfit[balanceType] % 100 === 0
+              ? numberWithCommas(
+                  profileData.todayProfit[balanceType] / 100
+                ).concat(".00")
+              : numberWithCommas(profileData.todayProfit[balanceType] / 100)
+          }`}
+        </Heading>
       </Box>
-    </HStack>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   balanceCardContent: {
     fontSize: 20,
+  },
+  heading: {
+    fontSize: 12,
+    color: "lightgrey",
   },
   shadow: {
     shadowColor: "#000",
@@ -81,5 +67,8 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
 });
+const mapStateToProps = (state) => ({
+  profileData: state.profileData,
+});
 
-export default Balance_Card;
+export default connect(mapStateToProps)(Balance_Card);

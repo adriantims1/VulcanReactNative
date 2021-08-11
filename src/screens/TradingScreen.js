@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Dimensions, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -12,79 +12,74 @@ import {
   Pressable,
   Text,
   VStack,
+  Spinner,
 } from "native-base";
 
 //Components
 import Header from "../components/Header";
 import Chart from "../components/Chart Tools/Chart";
+import Error from "../components/Error";
 
-//Context
-import ChartDataContext from "../context/ChartDataContext";
-import InitDataContext from "../context/InitDataContext";
-
-//Helper Functions
-import { getCandles } from "../helper functions/Binomo Requests/Non-Websockets";
+//Redux
+import { connect } from "react-redux";
 import {
+  subscribeAsSocket,
+  listenAsResponse,
+  stopListeningAsResponse,
   startRobot,
   stopRobot,
-} from "../helper functions/Robot Logics/Start Trade";
+} from "../actions/webSocketAction";
+import { changeSelectedMarket } from "../actions/marketDataAction";
+import { populateCandleData } from "../actions/candleDataAction";
 
-//Sockets
-import { subscribeAsSocket } from "../components/WebSockets";
+const { height } = Dimensions.get("window");
 
-const { width, height } = Dimensions.get("window");
-
-const TradingScreen = ({ navigation }) => {
-  const {
-    state,
-    setSelectedMarket,
-    setTrade,
-    setScale,
-    setData,
-    setScaleIsReady,
-  } = useContext(ChartDataContext);
-
-  const { state: InitDataState } = useContext(InitDataContext);
-  const [prevRic, setPrevRic] = useState(state.selectedMarket.ric);
+const TradingScreen = ({
+  marketData,
+  profileData,
+  changeSelectedMarket,
+  populateCandleData,
+  listenAsResponse,
+  stopListeningAsResponse,
+  webSocket,
+  startRobot,
+  stopRobot,
+}) => {
+  const [prevRic, setPrevRic] = useState(marketData.selectedMarket.ric);
 
   useEffect(() => {
-    const initChart = async () => {
-      subscribeAsSocket(prevRic, state.selectedMarket.ric, true);
-      setPrevRic(state.selectedMarket.ric);
+    listenAsResponse();
+    return () => {
+      stopListeningAsResponse();
     };
-    initChart();
-  }, [state.selectedMarket.ric]);
+  }, []);
 
-  const getCandleData = () => {
-    return state.data;
-  };
+  useEffect(() => {
+    subscribeAsSocket(prevRic, marketData.selectedMarket.ric, true);
+    setPrevRic(marketData.selectedMarket.ric);
+    populateCandleData(marketData.selectedMarket.ric);
+  }, [marketData.selectedMarket.ric]);
 
   const saveMarket = (selectedMarket) => {
-    setSelectedMarket(selectedMarket);
-    getCandles(selectedMarket.ric, setData, setScale);
+    changeSelectedMarket(selectedMarket);
   };
   const handleTradeButton = () => {
-    if (state.isTradeOpen) {
+    if (marketData.robotStatus === "open") {
       stopRobot();
     } else {
-      startRobot({
-        getCandleData,
-        balanceType: InitDataState.settings.balanceType,
-        iso: "USD",
-        ric: state.selectedMarket.ric,
-        maxLoss: InitDataState.settings.maxLoss,
-      });
+      startRobot();
     }
-    setTrade(!state.isTradeOpen);
   };
 
-  return (
+  return webSocket.hasError || profileData.hasError || marketData.hasError ? (
+    <Error />
+  ) : (
     <SafeAreaView>
       <Header title="Trade" />
       <ScrollView>
         <Box w="90%" h={height * 0.55} m={0} p={0} alignSelf="center">
           <Heading color="primary.800" marginBottom={3} marginLeft={3}>
-            {state.selectedMarket.name}
+            {marketData.selectedMarket.name}
           </Heading>
           <Chart />
         </Box>
@@ -95,14 +90,16 @@ const TradingScreen = ({ navigation }) => {
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
-              data={state.allMarkets}
+              data={marketData.tradeableMarket}
               keyExtractor={(el) => el.ric}
               renderItem={({ item, index }) => (
                 <Pressable
-                  disabled={state.isTradeOpen || state.showAnnotation}
+                  disabled={
+                    marketData.robotStatus !== "close" ||
+                    marketData.showAnnotation
+                  }
                   mr={3}
                   onPress={() => {
-                    setScaleIsReady(false);
                     saveMarket(item);
                   }}
                   _pressed={{
@@ -113,25 +110,27 @@ const TradingScreen = ({ navigation }) => {
                     <HStack
                       style={styles.card}
                       opacity={
-                        state.isTradeOpen || state.showAnnotation ? 0.5 : 1
+                        marketData.robotStatus !== "close" ||
+                        marketData.showAnnotation
+                          ? 0.5
+                          : 1
                       }
-                      border={3}
-                      borderColor={
-                        state.selectedMarket.ric === item.ric
-                          ? "primary.800"
-                          : "black"
+                      borderWidth={
+                        marketData.selectedMarket.ric === item.ric ? 0 : 2
                       }
+                      borderColor="black"
+                      borderRadius={10}
                       space={3}
                       bgColor={
-                        state.selectedMarket.ric === item.ric
+                        marketData.selectedMarket.ric === item.ric
                           ? "primary.800"
                           : "white"
                       }
-                      p={3}
+                      p={4}
                     >
                       <Image
                         source={{
-                          uri: item.url,
+                          uri: marketData.marketIcons[item.name],
                         }}
                         alt="testing"
                         w={10}
@@ -142,7 +141,7 @@ const TradingScreen = ({ navigation }) => {
                       <VStack>
                         <Text
                           color={
-                            state.selectedMarket.ric === item.ric
+                            marketData.selectedMarket.ric === item.ric
                               ? "white"
                               : "black"
                           }
@@ -151,7 +150,7 @@ const TradingScreen = ({ navigation }) => {
                         </Text>
                         <Text
                           color={
-                            state.selectedMarket.ric === item.ric
+                            marketData.selectedMarket.ric === item.ric
                               ? "white"
                               : "black"
                           }
@@ -173,11 +172,18 @@ const TradingScreen = ({ navigation }) => {
           onPress={handleTradeButton}
           mb={3}
           disabled={
-            InitDataState.settings.balanceType === "real" &&
-            InitDataState.todayProfit / 100 >= InitDataState.settings.maxProfit
+            profileData.todayProfit[profileData.settings.balanceType] / 100 >=
+              profileData.settings.maxProfit ||
+            marketData.robotStatus === "wait"
           }
         >
-          {state.isTradeOpen ? "Stop Trade" : "Start Trade"}
+          {marketData.robotStatus === "open" ? (
+            "Stop Trade"
+          ) : marketData.robotStatus === "close" ? (
+            "Start Trade"
+          ) : (
+            <Spinner color="primary.800" size="sm" />
+          )}
         </Button>
       </ScrollView>
     </SafeAreaView>
@@ -192,4 +198,19 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TradingScreen;
+const mapStateToProps = (state) => ({
+  marketData: state.marketData,
+  profileData: state.profileData,
+  webSocket: state.webSocket,
+});
+
+const mapDispatchToProps = {
+  changeSelectedMarket,
+  populateCandleData,
+  listenAsResponse,
+  stopListeningAsResponse,
+  startRobot,
+  stopRobot,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(TradingScreen);

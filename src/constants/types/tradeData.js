@@ -1,0 +1,3 @@
+export const SEND_TRADE = "SEND_TRADE";
+export const SEND_TRADE_SUCCESS = "SEND_TRADE_SUCCESS";
+export const SEND_TRADE_FAIL = "SEND_TRADE_FAIL";

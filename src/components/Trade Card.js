@@ -1,32 +1,56 @@
-import React, { useContext } from "react";
+import React from "react";
 import { StyleSheet } from "react-native";
-import { Box, HStack, Heading, Text, Center } from "native-base";
+import { Box, HStack, Heading, Text, Center, Image } from "native-base";
 
-//Context
-import InitDataContext from "../context/InitDataContext";
+//Icon
+import DownIcon from "./icons/DownIcon";
+import UpIcon from "./icons/UpIcon";
 
-const Trade_Card = ({ asset_name, status, trend, win }) => {
-  const { state } = useContext(InitDataContext);
+//Redux
+import { connect } from "react-redux";
+
+const Trade_Card = ({
+  asset_name,
+  status,
+  trend,
+  win,
+  marketData,
+  profileData,
+}) => {
   const numberWithCommas = (x) => {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
   return (
-    <Box style={styles.container} padding={3} justifyContent="center">
+    <Box
+      style={styles.container}
+      justifyContent="center"
+      borderWidth={status !== "won" ? 2 : 0}
+      borderColor="primary.800"
+      borderRadius={10}
+    >
       <Center
-        bgColor={status === "won" ? "primary.800" : "white"}
+        bgColor={
+          status === "lost" || status === "open" ? "white" : "primary.800"
+        }
         borderRadius={10}
         p={3}
-        style={styles.shadow}
       >
-        <HStack justifyContent="space-between" w="100%">
-          <Heading size="sm" color={status === "won" ? "white" : "primary.800"}>
+        <HStack w="100%" justifyContent="space-between" alignItems="center">
+          <Image
+            source={{ uri: marketData.marketIcons[asset_name] }}
+            size={"xs"}
+            alt="asset logo"
+          />
+          <Heading size="sm" color={status !== "won" ? "primary.800" : "white"}>
             {asset_name}
           </Heading>
-        </HStack>
-
-        <HStack w="100%">
-          <Text color={status === "won" ? "white" : "primary.800"}>{`${
-            state.iso
+          {trend === "call" ? (
+            <UpIcon color="#14C679" />
+          ) : (
+            <DownIcon color="#FF646C" />
+          )}
+          <Text color={status !== "won" ? "primary.800" : "white"}>{`${
+            profileData.unit
           } ${
             win % 100 === 0
               ? numberWithCommas(win / 100).concat(".00")
@@ -40,9 +64,8 @@ const Trade_Card = ({ asset_name, status, trend, win }) => {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 10,
-
-    width: 150,
+    width: "100%",
+    marginVertical: 4,
   },
   shadow: {
     shadowColor: "#000",
@@ -56,5 +79,9 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
 });
+const mapStateToProps = (state) => ({
+  marketData: state.marketData,
+  profileData: state.profileData,
+});
 
-export default Trade_Card;
+export default connect(mapStateToProps, {})(Trade_Card);

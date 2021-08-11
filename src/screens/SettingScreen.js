@@ -1,6 +1,7 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
 
 import {
   Box,
@@ -11,43 +12,73 @@ import {
   Radio,
   VStack,
   AlertDialog,
+  Alert,
   Text,
+  PresenceTransition,
 } from "native-base";
-import FontAwesomeIcon from "react-native-vector-icons/FontAwesome";
 
 //Components
 import Header from "../components/Header";
 import LogoutIcon from "../components/icons/LogoutIcon";
+import Error from "../components/Error";
 
-//Context
-import InitDataContext from "../context/InitDataContext";
-import ChartDataContext from "../context/ChartDataContext";
+//Redux
+import { connect } from "react-redux";
+import { modifySettings } from "../actions/profileDataAction";
+import { disconnectWebSocket } from "../actions/webSocketAction";
 
-//Websocket
-import { asSocket, wsSocket } from "../components/WebSockets";
+//Types
+import { RESET_WEBSOCKET } from "../constants/types/webSocket";
+import { RESET_PROFILE_DATA } from "../constants/types/profileData";
+import { RESET_CANDLE_DATA } from "../constants/types/candleData";
+import { RESET_MARKET_DATA } from "../constants/types/marketData";
 
-const SettingsScreen = ({ navigation, route }) => {
-  const { state: chartDataState } = useContext(ChartDataContext);
-  const { state, setSettings } = useContext(InitDataContext);
-  const [stateSettings, setStateSettings] = useState(state.settings);
+const SettingsScreen = ({
+  navigation,
+  profileData,
+  modifySettings,
+  marketData,
+  disconnectWebSocket,
+  webSocket,
+}) => {
+  const [stateSettings, setStateSettings] = useState(profileData.settings);
   const [saving, setSaving] = useState(false);
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
+  const [alert, setAlert] = useState("close");
+  const [errMessage, setErrMessage] = useState("");
+  const dispatch = useDispatch();
 
   const handleLogout = () => {
-    if (chartDataState.isTradeOpen || chartDataState.showAnnotation) {
+    if (marketData.robotStatus !== "close" || marketData.showAnnotation) {
       setOpenAlertDialog(true);
     } else {
-      disconnect();
+      disconnectWebSocket();
+
+      navigation.navigate("Login");
     }
-  };
-  const disconnect = () => {
-    asSocket.close();
-    wsSocket.close();
-    navigation.navigate("Login");
   };
   const handleSaveButton = () => {
     setSaving((prev) => !prev);
-    setSettings(stateSettings);
+    if (
+      stateSettings.maxLoss * 0.05 < profileData.limit.min / 100 ||
+      stateSettings.maxLoss * 0.6 > profileData.limit.max / 100
+    ) {
+      setErrMessage("Max loss too large/small");
+      setAlert("error");
+      setSaving((prev) => !prev);
+      return;
+    }
+    if (
+      profileData.balance[stateSettings.balanceType] <
+      profileData.settings.maxLoss
+    ) {
+      setErrMessage("Max loss must be greater than balance");
+      setAlert("error");
+      setSaving((prev) => !prev);
+      return;
+    }
+    modifySettings(stateSettings);
+    setAlert("success");
     setSaving((prev) => !prev);
   };
   const setBalanceType = (value) => {
@@ -60,12 +91,11 @@ const SettingsScreen = ({ navigation, route }) => {
     });
   };
   const setMaxLoss = (value) => {
-    if (Number(value) < 20) {
-      return;
-    }
     setStateSettings({ ...stateSettings, maxLoss: Number(value) });
   };
-  return (
+  return webSocket.hasError || profileData.hasError || marketData.hasError ? (
+    <Error />
+  ) : (
     <>
       <SafeAreaView>
         <Header
@@ -76,6 +106,27 @@ const SettingsScreen = ({ navigation, route }) => {
         <Center style={styles.bodyContainer}>
           <Box w="90%">
             <VStack space="lg">
+              <PresenceTransition
+                visible={alert !== "close"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 250 } }}
+                onTransitionComplete={(phase) => {
+                  if (phase === "entered") {
+                    setTimeout(() => {
+                      setAlert("close");
+                    }, 5000);
+                  }
+                }}
+              >
+                {alert !== "close" && (
+                  <Alert status={alert} w="100%">
+                    <Alert.Icon />
+                    <Alert.Title flexShrink={1}>
+                      {alert === "error" ? errMessage : "Succesful!"}
+                    </Alert.Title>
+                  </Alert>
+                )}
+              </PresenceTransition>
               <FormControl>
                 <VStack>
                   <FormControl.Label>Balance Type</FormControl.Label>
@@ -103,11 +154,11 @@ const SettingsScreen = ({ navigation, route }) => {
               </FormControl>
               <FormControl>
                 <VStack>
-                  <FormControl.Label>Real Max Profit / Day</FormControl.Label>
+                  <FormControl.Label>Max Profit / Day</FormControl.Label>
                   <Input
                     InputLeftElement={
                       <Text ml={3} fontWeight="500">
-                        {state.iso}
+                        {profileData.unit}
                       </Text>
                     }
                     keyboardType="numeric"
@@ -118,12 +169,12 @@ const SettingsScreen = ({ navigation, route }) => {
               </FormControl>
               <FormControl>
                 <VStack>
-                  <FormControl.Label>Real Max Loss / Day</FormControl.Label>
+                  <FormControl.Label>Max Loss / Day</FormControl.Label>
                   <Input
                     keyboardType="numeric"
                     InputLeftElement={
                       <Text ml={3} fontWeight="500">
-                        {state.iso}
+                        {profileData.unit}
                       </Text>
                     }
                     value={stateSettings.maxLoss.toString()}
@@ -137,7 +188,9 @@ const SettingsScreen = ({ navigation, route }) => {
                 isLoadingText="Saving"
                 onPress={handleSaveButton}
                 disabled={
-                  chartDataState.isTradeOpen || chartDataState.showAnnotation
+                  marketData.robotStatus !== "close" ||
+                  marketData.showAnnotation ||
+                  saving
                 }
               >
                 Save
@@ -167,7 +220,7 @@ const SettingsScreen = ({ navigation, route }) => {
               <Button
                 size="md"
                 variant="ghost"
-                onPress={disconnect}
+                onPress={handleLogout}
                 colorScheme="primary"
               >
                 Logout
@@ -186,5 +239,13 @@ const styles = StyleSheet.create({
     fontSize: 30,
   },
 });
+const mapStateToProps = (state) => ({
+  profileData: state.profileData,
+  marketData: state.marketData,
+  webSocket: state.webSocket,
+});
 
-export default SettingsScreen;
+export default connect(mapStateToProps, {
+  modifySettings,
+  disconnectWebSocket,
+})(SettingsScreen);

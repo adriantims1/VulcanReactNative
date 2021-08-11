@@ -18,9 +18,9 @@ import TradingScreen from "./src/screens/TradingScreen";
 import SettingScreen from "./src/screens/SettingScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 
-//Context
-import { InitDataProvider } from "./src/context/InitDataContext";
-import { ChartDataProvider } from "./src/context/ChartDataContext";
+//Redux
+import { Provider } from "react-redux";
+import store from "./src/store/store";
 
 const navigator = createBottomTabNavigator(
   {
@@ -67,9 +67,7 @@ const navigator = createBottomTabNavigator(
       inactiveTintColor: "#0b4870",
       showLabel: false,
       style: {
-        bottom: 25,
-        left: 20,
-        right: 20,
+        bottom: 20,
         position: "absolute",
         borderTopColor: "transparent",
         backgroundColor: "transparent",
@@ -87,7 +85,6 @@ const navigator = createBottomTabNavigator(
         },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-
         elevation: 5,
       },
       keyboardHidesTabBar: true,
@@ -160,15 +157,14 @@ export default function () {
   return (
     <>
       <StatusBar backgroundColor="#0b4870"></StatusBar>
-      <ChartDataProvider>
-        <InitDataProvider>
-          <NativeBaseProvider theme={theme}>
-            <SafeAreaProvider>
-              <App />
-            </SafeAreaProvider>
-          </NativeBaseProvider>
-        </InitDataProvider>
-      </ChartDataProvider>
+
+      <Provider store={store}>
+        <NativeBaseProvider theme={theme}>
+          <SafeAreaProvider>
+            <App />
+          </SafeAreaProvider>
+        </NativeBaseProvider>
+      </Provider>
     </>
   );
 }

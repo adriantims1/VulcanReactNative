@@ -1,16 +1,12 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Line, Rect } from "react-native-svg";
-
-//Context
-import ChartDataContext from "../../context/ChartDataContext";
 
 const MARGIN = 2;
 
-const Candle = ({ candle, index, candleWidth: width }) => {
-  const { state } = useContext(ChartDataContext);
+const Candle = ({ candle, index, candleWidth: width, scaleY, scaleBody }) => {
   const { open, high, low, close } = candle;
 
-  const fill = close > open ? "#4AFA9A" : "#E33F64";
+  const fill = close > open ? "#4AFA9A" : close < open ? "#E33F64" : "darkgrey";
   const x = index * width;
   const max = Math.max(open, close);
   const min = Math.min(open, close);
@@ -18,16 +14,16 @@ const Candle = ({ candle, index, candleWidth: width }) => {
     <>
       <Rect
         x={x + MARGIN}
-        y={state.scaleY(max)}
+        y={scaleY(max)}
         width={width - MARGIN * 2}
-        height={state.scaleBody(max - min)}
+        height={scaleBody(max - min)}
         fill={fill}
       />
       <Line
         x1={x + width / 2}
-        y1={state.scaleY(low)}
+        y1={scaleY(low)}
         x2={x + width / 2}
-        y2={state.scaleY(high)}
+        y2={scaleY(high)}
         stroke={fill}
         strokeWidth={1}
       />
