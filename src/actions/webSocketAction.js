@@ -37,11 +37,12 @@ var globalAuthToken, globalDeviceId;
 var compIndex = 0;
 var toSend;
 
-export const connectWebSocket = (authToken, deviceId, success) => {
-  return (dispatch) => {
+export const connectWebSocket = (success) => {
+  return (dispatch, getState) => {
     dispatch({ type: CONNECT_WEBSOCKET });
+    const { accountInfo } = getState();
     dispatchGlobal = dispatch;
-    ws = new WebSocket(BINOMO_WS(authToken, deviceId));
+    ws = new WebSocket(BINOMO_WS(accountInfo.authToken, accountInfo.deviceId));
     ws.onclose = () => {
       ref = 1;
     };
@@ -58,12 +59,21 @@ export const connectWebSocket = (authToken, deviceId, success) => {
           ref: ref,
         })
       );
-      ref += 2;
-      globalAuthToken = authToken;
-      globalDeviceId = deviceId;
+      ref += 1;
+      ws.send(
+        JSON.stringify({
+          topic: "user",
+          event: "phx_join",
+          payload: {},
+          ref: ref,
+        })
+      );
+      ref += 1;
+      globalAuthToken = accountInfo.authToken;
+      globalDeviceId = accountInfo.deviceId;
       listenWsResponse();
-      AsyncStorage.setItem("authtoken", authToken);
-      AsyncStorage.setItem("deviceid", deviceId);
+      AsyncStorage.setItem("authtoken", accountInfo.authToken);
+      AsyncStorage.setItem("deviceid", accountInfo.deviceId);
       as = new WebSocket(BINOMO_AS());
       as.onopen = () => {
         subscribeAsSocket("", "Z-CRY/IDX", false);
@@ -88,7 +98,6 @@ const listenWsResponse = () => {
     switch (res.event) {
       case "phx_reply":
         if (res.payload.status !== "ok") {
-          console.log(res);
           dispatchGlobal({
             type: CONNECT_WEBSOCKET_FAIL,
             payload: "cannot connect",
@@ -111,7 +120,7 @@ const listenWsResponse = () => {
             payload: {},
             ref: ref,
           });
-          console.log(toSend);
+
           ws.send(toSend);
           ref += 1;
           toSend = JSON.stringify({
@@ -121,12 +130,11 @@ const listenWsResponse = () => {
             ref: ref,
           });
           ws.send(toSend);
-          console.log(toSend);
+
           ref += 1;
         }, 50e3);
         break;
       case "deal_created":
-        console.log("deal_created");
         const { asset_name, status, trend, win, deal_type, amount } =
           res.payload;
         dispatchGlobal(dealCreated(res.payload));
@@ -138,7 +146,7 @@ const listenWsResponse = () => {
         break;
       case "close_deal_batch":
         //Calculate Win or Loss
-        console.log("close_deal_batch");
+
         dispatchGlobal(removeAnnotation());
         dispatchGlobal(closeLatestTradeHistory(res.payload.end_rate));
         break;
@@ -162,7 +170,6 @@ export function subscribeAsSocket(prevRic, ric, shouldUnsubcribe) {
     rics: [ric],
   });
   as.send(toSend);
-  console.log(toSend);
 }
 function unsubscribeAsSocket(ric) {
   let toSend = JSON.stringify({
@@ -170,7 +177,6 @@ function unsubscribeAsSocket(ric) {
     rics: [ric],
   });
   as.send(toSend);
-  console.log(toSend);
 }
 
 export const listenAsResponse = () => {
@@ -186,6 +192,7 @@ export const listenAsResponse = () => {
       }, 1000);
       //update logic
       res = res.data[0].assets[0];
+
       const { candleData } = getState();
       if (
         res.created_at.slice(17, 19) === "00" ||
@@ -240,13 +247,13 @@ export const startRobot = () => {
       await waitit.start({
         check: () => {
           const { candleData } = getState();
-          console.log(candleData.data[candleData.data.length - 1].created_at);
+
           time = new Date(
             candleData.data[candleData.data.length - 1].created_at
           ).getSeconds();
           return time === 59 || time === 0;
         },
-        maxTicks: 60,
+        maxTicks: 120,
       });
       let { profileData, marketData, candleData } = getState();
       const compensation = [
@@ -256,24 +263,45 @@ export const startRobot = () => {
         Math.round(profileData.settings.maxLoss * 0.6 * 100),
       ];
       let pred = await calculatePrediction();
+
       sendTrade({
         amount: compensation[compIndex],
-        created_at: new Date(
-          candleData.data[candleData.data.length - 1].created_at
-        ).getSeconds(),
+        created_at: Date.now(),
         deal_type: profileData.settings.balanceType,
         iso: profileData.iso,
         ric: marketData.selectedMarket.ric,
         trend: pred,
+        expire_at:
+          60 *
+          Math.ceil(
+            (Math.ceil(
+              new Date(
+                candleData.data[candleData.data.length - 1].created_at
+              ).getTime() / 1e3
+            ) +
+              30) /
+              60
+          ),
       });
       dispatch({ type: START_ROBOT });
       tradeInterval = setInterval(async () => {
-        let { profileData, marketData } = getState();
+        let { profileData, marketData, candleData } = getState();
         time = time;
         let pred = await calculatePrediction();
         sendTrade({
+          expire_at:
+            60 *
+            Math.ceil(
+              (Math.ceil(
+                new Date(
+                  candleData.data[candleData.data.length - 1].created_at
+                ).getTime() / 1e3
+              ) +
+                30) /
+                60
+            ),
           amount: compensation[compIndex],
-          created_at: time,
+          created_at: Date.now(),
           deal_type: profileData.settings.balanceType,
           iso: profileData.iso,
           ric: marketData.selectedMarket.ric,
@@ -291,18 +319,26 @@ const calculatePrediction = async () => {
   return result.data.data;
 };
 
-const sendTrade = ({ amount, created_at, deal_type, iso, ric, trend }) => {
+const sendTrade = ({
+  amount,
+  created_at,
+  deal_type,
+  iso,
+  ric,
+  trend,
+  expire_at,
+}) => {
   let payload = {
     amount,
     created_at,
     deal_type,
+    expire_at,
     iso,
+    option_type: "turbo",
     ric,
     trend,
-    option_type: "turbo",
-    created_at,
-    expire_at: 60 * Math.ceil((Math.ceil(Date.now() / 1e3) + 30) / 60),
   };
+
   ws.send(
     JSON.stringify({
       topic: "base",
@@ -319,4 +355,12 @@ export const stopRobot = () => {
     clearInterval(tradeInterval);
     dispatch({ type: STOP_ROBOT });
   };
+};
+
+export const increaseCompIndex = () => {
+  if (compIndex >= 3) stopRobot();
+  else compIndex += 1;
+};
+export const resetCompIndex = () => {
+  compIndex = 0;
 };

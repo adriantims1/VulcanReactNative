@@ -14,14 +14,15 @@ import {
 
 import axios from "axios";
 
-export const setMarket = (authToken, deviceId) => {
-  return async (dispatch) => {
+export const setMarket = () => {
+  return async (dispatch, getState) => {
     try {
+      const { accountInfo } = getState();
       dispatch({ type: FETCH_MARKET_DATA });
       //get all markets & icons
       let allMarkets = await axios.get(
         BINOMO_GET_ALL_MARKET(),
-        BINOMO_AXIOS_CONFIG(authToken, deviceId)
+        BINOMO_AXIOS_CONFIG(accountInfo.authToken, accountInfo.deviceId)
       );
       allMarkets = allMarkets.data.data.assets;
       let marketIcons = {};

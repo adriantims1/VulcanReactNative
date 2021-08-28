@@ -19,26 +19,19 @@ import {
 
 //Components
 import Header from "../components/Header";
-import LogoutIcon from "../components/icons/LogoutIcon";
+
 import Error from "../components/Error";
 
 //Redux
 import { connect } from "react-redux";
 import { modifySettings } from "../actions/profileDataAction";
-import { disconnectWebSocket } from "../actions/webSocketAction";
-
-//Types
-import { RESET_WEBSOCKET } from "../constants/types/webSocket";
-import { RESET_PROFILE_DATA } from "../constants/types/profileData";
-import { RESET_CANDLE_DATA } from "../constants/types/candleData";
-import { RESET_MARKET_DATA } from "../constants/types/marketData";
 
 const SettingsScreen = ({
   navigation,
   profileData,
   modifySettings,
   marketData,
-  disconnectWebSocket,
+
   webSocket,
 }) => {
   const [stateSettings, setStateSettings] = useState(profileData.settings);
@@ -48,15 +41,6 @@ const SettingsScreen = ({
   const [errMessage, setErrMessage] = useState("");
   const dispatch = useDispatch();
 
-  const handleLogout = () => {
-    if (marketData.robotStatus !== "close" || marketData.showAnnotation) {
-      setOpenAlertDialog(true);
-    } else {
-      disconnectWebSocket();
-
-      navigation.navigate("Login");
-    }
-  };
   const handleSaveButton = () => {
     setSaving((prev) => !prev);
     if (
@@ -98,11 +82,7 @@ const SettingsScreen = ({
   ) : (
     <>
       <SafeAreaView>
-        <Header
-          title="Settings"
-          icons={[<LogoutIcon />]}
-          iconFunctions={[handleLogout]}
-        />
+        <Header title="Settings" />
         <Center style={styles.bodyContainer}>
           <Box w="90%">
             <VStack space="lg">
@@ -217,14 +197,6 @@ const SettingsScreen = ({
               >
                 Cancel
               </Button>
-              <Button
-                size="md"
-                variant="ghost"
-                onPress={handleLogout}
-                colorScheme="primary"
-              >
-                Logout
-              </Button>
             </Button.Group>
           </AlertDialog.Footer>
         </AlertDialog.Content>
@@ -247,5 +219,4 @@ const mapStateToProps = (state) => ({
 
 export default connect(mapStateToProps, {
   modifySettings,
-  disconnectWebSocket,
 })(SettingsScreen);

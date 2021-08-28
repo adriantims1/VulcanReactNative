@@ -3,6 +3,7 @@ import {
   FETCH_CANDLE_DATA_SUCCESS,
   FETCH_CANDLE_DATA_FAIL,
   MODIFY_CANDLE_DATA,
+  RESET_CANDLE_DATA,
 } from "../constants/types/candleData";
 
 const initialState = {
@@ -37,7 +38,8 @@ const candleDataReducer = (state = initialState, action) => {
       };
     case MODIFY_CANDLE_DATA:
       return { ...state, data: action.payload };
-
+    case RESET_CANDLE_DATA:
+      return { ...state, data: [] };
     default:
       return state;
   }

@@ -6,18 +6,20 @@ import {
   FETCH_CANDLE_DATA_SUCCESS,
   FETCH_CANDLE_DATA_FAIL,
   MODIFY_CANDLE_DATA,
+  RESET_CANDLE_DATA,
 } from "../constants/types/candleData";
 import { BINOMO_GET_CANDLE } from "../constants/url/binomoUrl";
 
 //Candle Data Function
 export const populateCandleData = (ric) => {
-  return async (dispatch) => {
+  return async (dispatch, getState) => {
     try {
       dispatch({ type: FETCH_CANDLE_DATA });
       const url = BINOMO_GET_CANDLE(ric);
-      let data = await axios.get(url);
+      let data = await axios.post(url, { ric });
       data = data.data.data;
       data = data.slice(data.length - 10);
+
       dispatch({
         type: FETCH_CANDLE_DATA_SUCCESS,
         payload: { data },

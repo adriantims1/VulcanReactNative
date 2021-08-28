@@ -1,22 +1,26 @@
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import React from "react";
+import React, { useEffect } from "react";
 import { createAppContainer } from "react-navigation";
 import { createBottomTabNavigator } from "react-navigation-tabs";
 import { createStackNavigator } from "react-navigation-stack";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { NativeBaseProvider, extendTheme, StatusBar } from "native-base";
+import * as SplashScreen from "expo-splash-screen";
+import { NavigationContainer } from "@react-navigation/native";
 
 //icons
 import HomeIcon from "./src/components/icons/HomeIcon";
 import TradingIcon from "./src/components/icons/TradingIcon";
 import SettingIcon from "./src/components/icons/SettingIcon";
+import ProfileIcon from "./src/components/icons/ProfileIcon";
 
 //Screens
-
+import SignupScreen from "./src/screens/SignupScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import TradingScreen from "./src/screens/TradingScreen";
 import SettingScreen from "./src/screens/SettingScreen";
 import LoginScreen from "./src/screens/LoginScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
 
 //Redux
 import { Provider } from "react-redux";
@@ -27,6 +31,7 @@ const navigator = createBottomTabNavigator(
     Home: HomeScreen,
     Trading: TradingScreen,
     Settings: SettingScreen,
+    Profile: ProfileScreen,
   },
   {
     initialRouteName: "Home",
@@ -41,6 +46,8 @@ const navigator = createBottomTabNavigator(
           return <SettingIcon color={tintColor} />;
         } else if (routeName === "Trading") {
           return <TradingIcon color={tintColor} />;
+        } else if (routeName === "Profile") {
+          return <ProfileIcon color={tintColor} />;
         }
       },
       tabBarButtonComponent: (props) => {
@@ -87,7 +94,7 @@ const navigator = createBottomTabNavigator(
         shadowRadius: 3.84,
         elevation: 5,
       },
-      keyboardHidesTabBar: true,
+      keyboardHidesTabBar: false,
     },
   }
 );
@@ -96,6 +103,7 @@ const inApp = createAppContainer(navigator);
 
 const stack = createStackNavigator(
   {
+    Signup: SignupScreen,
     Login: LoginScreen,
     InApp: inApp,
   },
@@ -110,6 +118,20 @@ const stack = createStackNavigator(
 );
 
 const App = createAppContainer(stack);
+
+const WrapperApp = () => {
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await SplashScreen.preventAutoHideAsync();
+      } catch (err) {
+        console.log(err);
+      }
+    }
+    prepare();
+  }, []);
+  return <App />;
+};
 
 export default function () {
   const theme = extendTheme({
@@ -156,12 +178,13 @@ export default function () {
   });
   return (
     <>
-      <StatusBar backgroundColor="#0b4870"></StatusBar>
-
+      <StatusBar backgroundColor="#0b4870" />
       <Provider store={store}>
         <NativeBaseProvider theme={theme}>
           <SafeAreaProvider>
-            <App />
+            <NavigationContainer>
+              <WrapperApp />
+            </NavigationContainer>
           </SafeAreaProvider>
         </NativeBaseProvider>
       </Provider>

@@ -14,20 +14,25 @@ import {
   BINOMO_GET_BALANCE,
   BINOMO_GET_TRADE_HISTORY,
 } from "../constants/url/binomoUrl";
+import { increaseCompIndex, resetCompIndex } from "./webSocketAction";
 
 var dispatchGlobal;
 
-export const initData = (authToken, deviceId) => {
-  return async (dispatch) => {
+export const initData = () => {
+  return async (dispatch, getState) => {
     try {
+      const { accountInfo } = getState();
       dispatch({ type: FETCH_PROFILE_DATA });
       dispatchGlobal = dispatch;
+
       //iso, unit, limit, settings
       let profileConfig = await axios.get(
         BINOMO_GET_PROFILE_CONFIG(),
-        BINOMO_AXIOS_CONFIG(authToken, deviceId)
+        BINOMO_AXIOS_CONFIG(accountInfo.authToken, accountInfo.deviceId)
       );
+
       profileConfig = profileConfig.data.data;
+
       const iso = profileConfig.currencies.list[0].iso;
       const unit = profileConfig.currencies.list[0].unit;
       const limit = {
@@ -42,7 +47,7 @@ export const initData = (authToken, deviceId) => {
       //balance
       let balance = await axios.get(
         BINOMO_GET_BALANCE(),
-        BINOMO_AXIOS_CONFIG(authToken, deviceId)
+        BINOMO_AXIOS_CONFIG(accountInfo.authToken, accountInfo.deviceId)
       );
       balance = {
         real: balance.data.data.balance,
@@ -50,8 +55,16 @@ export const initData = (authToken, deviceId) => {
       };
 
       //tradeHistory & todayProfit
-      let realTradeHistory = await requestDeals("real", authToken, deviceId);
-      let demoTradeHistory = await requestDeals("demo", authToken, deviceId);
+      let realTradeHistory = await requestDeals(
+        "real",
+        accountInfo.authToken,
+        accountInfo.deviceId
+      );
+      let demoTradeHistory = await requestDeals(
+        "demo",
+        accountInfo.authToken,
+        accountInfo.deviceId
+      );
       let batchKey = {
         real: realTradeHistory.batch_key,
         demo: demoTradeHistory.batch_key,
@@ -86,8 +99,9 @@ export const initData = (authToken, deviceId) => {
 
 const requestDeals = async (dealType, authToken, deviceId, batchKey = null) => {
   try {
-    let tradeData = await axios.get(
-      BINOMO_GET_TRADE_HISTORY(dealType, batchKey),
+    let tradeData = await axios.post(
+      BINOMO_GET_TRADE_HISTORY(),
+      { dealType, batchKey },
       BINOMO_AXIOS_CONFIG(authToken, deviceId)
     );
 
@@ -169,19 +183,20 @@ export const closeLatestTradeHistory = (end_rate) => {
     let toModify = profileData.tradeHistory[profileData.settings.balanceType];
     const status =
       tradeData.open_rate < end_rate && tradeData.trend === "call"
-        ? "win"
+        ? "won"
         : tradeData.open_rate > end_rate
         ? "lost"
         : "tie";
     const win =
-      status === "win"
+      status === "won"
         ? tradeData.payment
         : status === "tie"
         ? tradeData.amount
         : 0;
     toModify[0].status = status;
     toModify[0].win = win;
-
+    if (status === "lost") increaseCompIndex();
+    else if (status === "won") resetCompIndex();
     dispatch({
       type: MODIFY_TRADE_HISTORY,
       payload: {

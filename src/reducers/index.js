@@ -4,6 +4,7 @@ import WebSocketReducer from "./webSocketReducer";
 import profileDataReducer from "./profileDataReducer";
 import marketDataReducer from "./marketDataReducer";
 import tradeDataReducer from "./tradeDataReducer";
+import accountInfoReducer from "./accountInfoReducer";
 
 const rootReducer = combineReducers({
   candleData: candleDataReducer,
@@ -11,6 +12,7 @@ const rootReducer = combineReducers({
   profileData: profileDataReducer,
   marketData: marketDataReducer,
   tradeData: tradeDataReducer,
+  accountInfo: accountInfoReducer,
 });
 
 export default rootReducer;
