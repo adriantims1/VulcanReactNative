@@ -11,6 +11,8 @@ import {
 } from "../constants/types/webSocket";
 import { MODIFY_BALANCE } from "../constants/types/profileData";
 import {
+  MODIFY_TRADEABLE_MARKET,
+  MODIFY_ONE_TRADEABLE_MARKET,
   START_ROBOT,
   STOP_ROBOT,
   WAIT_ROBOT,
@@ -159,6 +161,16 @@ const listenWsResponse = () => {
           },
         });
         break;
+      case "asset_changed":
+        dispatchGlobal({
+          type: MODIFY_TRADEABLE_MARKET,
+          payload: {
+            ric: res.payload.ric,
+            name: res.payload.name,
+            percent:
+              res.payload.trading_tools_settings.option.base_payment_rate_turbo,
+          },
+        });
     }
   };
 };

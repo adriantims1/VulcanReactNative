@@ -9,6 +9,7 @@ import {
   ADD_ANNOTATION,
   REMOVE_ANNOTATION,
   WAIT_ROBOT,
+  MODIFY_ONE_TRADEABLE_MARKET,
 } from "../constants/types/marketData";
 
 const initialState = {
@@ -45,8 +46,18 @@ export default (state = initialState, { type, payload }) => {
       return { ...state, hasFetchError: true, fetchErrorMessage: payload };
     case MODIFY_TRADEABLE_MARKET:
       return { ...state, tradeableMarket: payload };
+
     case MODIFY_SELECTED_MARKET:
       return { ...state, selectedMarket: payload };
+    case MODIFY_ONE_TRADEABLE_MARKET:
+      let allMarket = state.tradeableMarket;
+      let marketToChange = allMarket.findIndex((el) => el.ric === payload.ric);
+      allMarket[marketToChange] = {
+        name: payload.name,
+        ric: payload.ric,
+        percent: payload.percent,
+      };
+      return { ...state, tradeableMarket: marketToChange };
     case WAIT_ROBOT:
       return { ...state, robotStatus: "wait" };
     case START_ROBOT:

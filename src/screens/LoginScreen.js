@@ -48,14 +48,14 @@ const TradingScreen = ({
   useEffect(() => {
     async function prepare() {
       try {
-        // await AsyncStorage.setItem("login", "false");
+        await AsyncStorage.setItem("login", "false");
         let login = await AsyncStorage.getItem("login");
         login = JSON.parse(login);
         console.log("this is login: ", login);
         if (login) {
           let data = await AsyncStorage.getItem("profile");
           data = JSON.parse(data);
-          console.log(data);
+          console.log("this is data", data);
           justConnect(data.email, data.name, data.authToken, data.deviceId);
           connect(data.email, data.name, data.authToken, data.deviceId);
         } else {
@@ -78,6 +78,15 @@ const TradingScreen = ({
         setTimeout(async () => {
           setLoading(false);
           await AsyncStorage.setItem("login", "true");
+          AsyncStorage.setItem(
+            "profile",
+            JSON.stringify({
+              name,
+              email,
+              authToken,
+              deviceId,
+            })
+          );
           console.log({ email, name, authToken, deviceId });
           navigation.navigate("InApp");
           SplashScreen.hideAsync();

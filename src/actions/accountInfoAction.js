@@ -17,6 +17,7 @@ import {
   ACCOUNT_NAME,
   ACCOUNT_PASSWORD,
 } from "../constants/url/authenticationUrl";
+import { BINOMO_AXIOS_CONFIG } from "../constants/url/binomoUrl";
 
 import { connectWebSocket } from "./webSocketAction";
 
@@ -107,24 +108,46 @@ export const justConnect = (email, name, authToken, deviceId) => ({
   payload: { email, name, authToken, deviceId },
 });
 
-export const changePassword = (new_password, current_password) => {
-  return async (dispatch) => {
+export const changePassword = (new_password, current_password, success) => {
+  return async (dispatch, getState) => {
     try {
-      const data = await axios.post(ACCOUNT_PASSWORD(), {
-        new_password,
-        new_password_confirmation: new_password,
-        current_password,
-      });
+      console.log("hello");
+      const { accountInfo } = getState();
+      console.log(accountInfo.email);
+      const data = await axios.post(
+        ACCOUNT_PASSWORD(),
+        {
+          email: accountInfo.email,
+          new_password,
+          new_password_confirmation: new_password,
+          current_password,
+        },
+        BINOMO_AXIOS_CONFIG(accountInfo.authToken, accountInfo.deviceId)
+      );
       dispatch({
         type: CHANGE_ACCOUNT_PASSWORD,
         payload: data.data.authtoken,
       });
-      connectWebSocket(() => {});
+      connectWebSocket(() => {
+        AsyncStorage.setItem(
+          "profile",
+          JSON.stringify({
+            name: accountInfo.name,
+            email: accountInfo.email,
+            authToken: data.data.authToken,
+            deviceId: accountInfo.deviceId,
+          })
+        );
+        console.log("connected");
+      });
     } catch (err) {
+      console.log(err);
       dispatch({
         type: FETCH_ACCOUNT_INFO_DATA_FAIL,
         payload: err.message,
       });
+    } finally {
+      success();
     }
   };
 };
@@ -148,6 +171,7 @@ export const changeName = (name, saving) => {
       await AsyncStorage.setItem(
         "profile",
         JSON.stringify({
+          email: accountInfo.email,
           name,
           authToken: accountInfo.authToken,
           deviceId: accountInfo.deviceId,

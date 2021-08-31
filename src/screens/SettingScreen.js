@@ -39,7 +39,6 @@ const SettingsScreen = ({
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
   const [alert, setAlert] = useState("close");
   const [errMessage, setErrMessage] = useState("");
-  const dispatch = useDispatch();
 
   const handleSaveButton = () => {
     setSaving((prev) => !prev);

@@ -1,11 +1,23 @@
-import { FormControl, Input, VStack, Button, Center, Box } from "native-base";
+import {
+  FormControl,
+  Input,
+  VStack,
+  Button,
+  Center,
+  Box,
+  IconButton,
+  PresenceTransition,
+  Alert,
+} from "native-base";
 import React, { useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet } from "react-native";
+
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import LogoutIcon from "../components/icons/LogoutIcon";
 
-//Url
+//Components
+import EyeCloseIcon from "../components/icons/EyeCloseIcon";
+import EyeOpenIcon from "../components/icons/EyeOpenIcon";
 
 //Redux
 import { connect } from "react-redux";
@@ -35,7 +47,16 @@ const ProfileScreen = ({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [disableLogout, setDisableLogout] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] =
+    useState("password");
+  const [currentPasswordVisible, setCurrentPasswordVisible] =
+    useState("password");
+  const [newPasswordVisible, setNewPasswordVisible] = useState("password");
+  const [alert, setAlert] = useState("close");
+  const [errMessage, setErrMessage] = useState("");
+
   const handleLogout = () => {
     if (disableLogout) return;
     if (marketData.robotStatus !== "close" || marketData.showAnnotation) {
@@ -61,8 +82,14 @@ const ProfileScreen = ({
 
   const handleSavePassword = () => {
     if (newPassword === confirmPassword) {
+      setSavingPassword(true);
+      changePassword(newPassword, currentPassword, () => {
+        setSavingPassword(false);
+        setAlert("success");
+      });
     } else {
-      console.log("Wrong");
+      setAlert("error");
+      setErrMessage("Confirm password do not match");
     }
   };
 
@@ -83,6 +110,27 @@ const ProfileScreen = ({
       >
         <Center>
           <Box width="90%">
+            <PresenceTransition
+              visible={alert !== "close"}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 250 } }}
+              onTransitionComplete={(phase) => {
+                if (phase === "entered") {
+                  setTimeout(() => {
+                    setAlert("close");
+                  }, 5000);
+                }
+              }}
+            >
+              {alert !== "close" && (
+                <Alert status={alert} w="100%">
+                  <Alert.Icon />
+                  <Alert.Title flexShrink={1}>
+                    {alert === "error" ? errMessage : "Succesful!"}
+                  </Alert.Title>
+                </Alert>
+              )}
+            </PresenceTransition>
             <FormControl>
               <VStack>
                 <FormControl.Label>Name</FormControl.Label>
@@ -93,7 +141,6 @@ const ProfileScreen = ({
                     setName(value);
                   }}
                   mb={4}
-                  type="password"
                 />
               </VStack>
             </FormControl>
@@ -113,6 +160,25 @@ const ProfileScreen = ({
                   onChangeText={(value) => {
                     setCurrentPassword(value);
                   }}
+                  type={currentPasswordVisible}
+                  InputRightElement={
+                    <IconButton
+                      icon={
+                        currentPasswordVisible === "password" ? (
+                          <EyeOpenIcon />
+                        ) : (
+                          <EyeCloseIcon />
+                        )
+                      }
+                      onPress={() => {
+                        if (currentPasswordVisible === "password")
+                          setCurrentPasswordVisible("string");
+                        else {
+                          setCurrentPasswordVisible("password");
+                        }
+                      }}
+                    />
+                  }
                 />
               </VStack>
             </FormControl>
@@ -124,7 +190,25 @@ const ProfileScreen = ({
                   onChangeText={(value) => {
                     setNewPassword(value);
                   }}
-                  type="password"
+                  type={newPasswordVisible}
+                  InputRightElement={
+                    <IconButton
+                      icon={
+                        newPasswordVisible === "password" ? (
+                          <EyeOpenIcon />
+                        ) : (
+                          <EyeCloseIcon />
+                        )
+                      }
+                      onPress={() => {
+                        if (newPasswordVisible === "password")
+                          setNewPasswordVisible("string");
+                        else {
+                          setNewPasswordVisible("password");
+                        }
+                      }}
+                    />
+                  }
                 />
               </VStack>
             </FormControl>
@@ -137,13 +221,31 @@ const ProfileScreen = ({
                     setConfirmPassword(value);
                   }}
                   mb={4}
-                  type="password"
+                  type={confirmPasswordVisible}
+                  InputRightElement={
+                    <IconButton
+                      icon={
+                        confirmPasswordVisible === "password" ? (
+                          <EyeOpenIcon />
+                        ) : (
+                          <EyeCloseIcon />
+                        )
+                      }
+                      onPress={() => {
+                        if (confirmPasswordVisible === "password")
+                          setConfirmPasswordVisible("string");
+                        else {
+                          setConfirmPasswordVisible("password");
+                        }
+                      }}
+                    />
+                  }
                 />
               </VStack>
             </FormControl>
             <Button
               variant="solid"
-              isLoading={saving}
+              isLoading={savingPassword}
               isLoadingText="Changing"
               onPress={handleSavePassword}
             >

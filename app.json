@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "VulcanReactNative",
-    "slug": "VulcanReactNative",
+    "name": "Vulcan",
+    "slug": "Vulcan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
